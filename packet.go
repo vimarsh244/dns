@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// parse dns message (header + question)
+// parsing dns message (header + question)
 func parse_dns_msg(data []byte) (dns_header, dns_question, error) {
 	var hdr dns_header
 	if len(data) < 12 {
@@ -28,7 +28,7 @@ func parse_dns_msg(data []byte) (dns_header, dns_question, error) {
 	return hdr, q, nil
 }
 
-// read dns name (labels)
+// reading dns name (labels)
 func read_name(r *bytes.Reader, msg []byte) (string, error) {
 	var labels []string
 	for {
@@ -48,13 +48,14 @@ func read_name(r *bytes.Reader, msg []byte) (string, error) {
 	return strings.Join(labels, "."), nil
 }
 
-// write dns name
+// writing dns name
 func write_name(w *bytes.Buffer, name string) {
 	// Remove trailing dot if present, as Split will create an empty label for it,
 	// and we'll add the final null byte explicitly.
 	if strings.HasSuffix(name, ".") {
 		name = name[:len(name)-1]
 	}
+    // strings.TrimSuffix(name, ".")
 	for _, label := range strings.Split(name, ".") {
 		w.WriteByte(byte(len(label)))
 		w.WriteString(label)

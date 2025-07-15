@@ -1,44 +1,39 @@
-# go-dns-server
+# dns server
+
+making simple authoritative dns server in go
+
+go is such a simple and nice language, really enhoying learning and writing it so far
 
 ## how to run
 
-1. generate a bcrypt hash for your admin password:
-
-```go
-package main
-import (
-	"fmt"
-	"golang.org/x/crypto/bcrypt"
-)
-func main() {
-	hash, _ := bcrypt.GenerateFromPassword([]byte("yourpassword"), bcrypt.DefaultCost)
-	fmt.Println(string(hash))
-}
-```
-
-save the output to a file called `admin.pass` in the project root.
-
-2. run the server (needs sudo for port 53):
+1. run the server (see the port in main.go):
 
 ```sh
 sudo go run .
+# need sudo if using port 53 
 ```
 
-3. test dns:
+
+2. test dns:
 
 ```sh
 dig @127.0.0.1 domain.com A
+# dig @127.0.0.1 -p 8053 domain.com A
 ```
 
-4. open the web ui:
+3. open the web ui: - doesn't work yet todo
 
 http://localhost:8080/
 
-login with user `admin` and your password (basic auth popup)
+login with user `admin` and password 
 
 ## notes
 - records are stored in zone.txt
-- web ui lets you add/remove records
-- only A, NS, CNAME supported
-- no external libraries except bcrypt for password hashing
-- comments in code are lowercase and rough
+- web ui mnaking very simple one for add/remove records
+- goal is no external libraries 
+
+## supported record types
+- A
+- NS
+- CNAME
+TODOs: txt, mx, aaaa (ipv6 ),  (these should be enuf)
