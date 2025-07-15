@@ -55,7 +55,7 @@ func write_name(w *bytes.Buffer, name string) {
 	if strings.HasSuffix(name, ".") {
 		name = name[:len(name)-1]
 	}
-    // strings.TrimSuffix(name, ".")
+	// strings.TrimSuffix(name, ".")
 	for _, label := range strings.Split(name, ".") {
 		w.WriteByte(byte(len(label)))
 		w.WriteString(label)
@@ -65,12 +65,12 @@ func write_name(w *bytes.Buffer, name string) {
 
 // write rr
 func write_rr(w *bytes.Buffer, rr rr) {
-	write_name(w, rr.name)
-	binary.Write(w, binary.BigEndian, rr.type_)
-	binary.Write(w, binary.BigEndian, rr.class)
-	binary.Write(w, binary.BigEndian, rr.ttl)
-	binary.Write(w, binary.BigEndian, uint16(len(rr.rdata)))
-	w.Write(rr.rdata)
+	write_name(w, rr.Name)
+	binary.Write(w, binary.BigEndian, rr.Type_)
+	binary.Write(w, binary.BigEndian, rr.Class)
+	binary.Write(w, binary.BigEndian, rr.TTL)
+	binary.Write(w, binary.BigEndian, uint16(len(rr.Rdata)))
+	w.Write(rr.Rdata)
 }
 
 // build dns response

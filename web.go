@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"html/template"
 	"log"
 	"net"
@@ -13,19 +14,29 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var templates = template.Must(template.New("").Funcs(template.FuncMap{
-	"rrValue": func(r rr) string {
-		switch r.type_ {
-		case type_a:
-			if len(r.rdata) == 4 {
-				return net.IP(r.rdata).String()
+var templates *template.Template
+
+func init() {
+	funcMap := template.FuncMap{
+		"rrValue": func(r rr) string {
+			switch r.Type_ {
+			case type_a:
+				if len(r.Rdata) == 4 {
+					return net.IP(r.Rdata).String()
+				}
+			case type_ns, type_cname:
+				return decode_name(r.Rdata)
 			}
-		case type_ns, type_cname:
-			return decode_name(r.rdata)
-		}
-		return "?"
-	},
-}).ParseGlob("templates/*.html"))
+			return "?"
+		},
+	}
+	// Ensure layout.html is the base and index.html is available as a named template
+	templates = template.Must(template.New("layout.html").Funcs(funcMap).ParseFiles(
+		"templates/layout.html",
+		"templates/index.html",
+		// "templates/ignoreiglogin.html",
+	))
+}
 
 // password hash file (bcrypt hash)
 var passfile = "admin.pass"
@@ -47,13 +58,74 @@ func start_web() {
 func handle_index(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" && r.FormValue("del") != "" {
 		name := r.FormValue("del")
+		delTypeStr := r.FormValue("delType")
+		delValueStr := r.FormValue("delValue")
+
 		if !strings.HasSuffix(name, ".") {
 			name += "."
 		}
-		delete(zone, name)
+
+		// Get existing records for the name
+		records := zone[name]
+		var updatedRecords []rr
+
+		var delType uint16
+		switch strings.ToUpper(delTypeStr) {
+		case "A":
+			delType = type_a
+		case "NS":
+			delType = type_ns
+		case "CNAME":
+			delType = type_cname
+		default:
+			log.Printf("Warning: Unknown record type \"%s\" for deletion of %s", delTypeStr, name)
+			// keeping all existing records if type is unknown, essentially skipping deletion.
+			updatedRecords = records
+		}
+
+		var delRdata []byte
+		// convering delValueStr to []byte based on delType for comparison
+		switch delType {
+		case type_a:
+			ip := net.ParseIP(delValueStr).To4()
+			if ip != nil {
+				delRdata = ip
+			} else {
+				log.Printf("Warning: Invalid IP address \"%s\" for A record deletion of %s", delValueStr, name)
+				updatedRecords = records // Cannot parse value, skip deletion
+			}
+		case type_ns, type_cname:
+			if !strings.HasSuffix(delValueStr, ".") {
+				delValueStr += "."
+			}
+			buf := &strings.Builder{}
+			for _, label := range strings.Split(delValueStr, ".") {
+				if label == "" {
+					continue
+				}
+				buf.WriteByte(byte(len(label)))
+				buf.WriteString(label)
+			}
+			buf.WriteByte(0)
+			delRdata = []byte(buf.String())
+		}
+
+		// iterating through existing records and keep only those that don't match the one to be deleted
+		for _, r := range records {
+			// Compare Name, Type_, and Rdata to find the specific record to delete
+			if !(r.Name == name && r.Type_ == delType && bytes.Equal(r.Rdata, delRdata)) {
+				updatedRecords = append(updatedRecords, r)
+			}
+		}
+
+		if len(updatedRecords) == 0 {
+			delete(zone, name)
+		} else {
+			zone[name] = updatedRecords
+		}
+
 		save_zone("zone.txt")
-		http.Redirect(w, r, "/", 303)
-		return
+		// No redirect, continue to render the page
 	}
 	if r.Method == "POST" {
 		name := r.FormValue("name")
@@ -68,19 +140,19 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 				value += "."
 			}
 			var rrec rr
-			rrec.name = name
-			rrec.class = class_in
-			rrec.ttl = uint32(ttl)
+			rrec.Name = name
+			rrec.Class = class_in
+			rrec.TTL = uint32(ttl)
 			switch strings.ToUpper(type_) {
 			case "A":
-				rrec.type_ = type_a
+				rrec.Type_ = type_a
 				ip := net.ParseIP(value).To4()
 				if ip != nil {
-					rrec.rdata = ip
+					rrec.Rdata = ip
 					zone[name] = append(zone[name], rrec)
 				}
 			case "NS":
-				rrec.type_ = type_ns
+				rrec.Type_ = type_ns
 				buf := &strings.Builder{}
 				for _, label := range strings.Split(value, ".") {
 					if label == "" {
@@ -90,10 +162,10 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 					buf.WriteString(label)
 				}
 				buf.WriteByte(0)
-				rrec.rdata = []byte(buf.String())
+				rrec.Rdata = []byte(buf.String())
 				zone[name] = append(zone[name], rrec)
 			case "CNAME":
-				rrec.type_ = type_cname
+				rrec.Type_ = type_cname
 				buf := &strings.Builder{}
 				for _, label := range strings.Split(value, ".") {
 					if label == "" {
@@ -103,17 +175,19 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 					buf.WriteString(label)
 				}
 				buf.WriteByte(0)
-				rrec.rdata = []byte(buf.String())
+				rrec.Rdata = []byte(buf.String())
 				zone[name] = append(zone[name], rrec)
 			}
 			save_zone("zone.txt")
 		}
-		http.Redirect(w, r, "/", 303)
-		return
 	}
 	data := struct {
 		Records map[string][]rr
 	}{zone}
+
+	// Debug: Log the records being passed to the template
+	log.Printf("DEBUG: Web UI Records: %+v\n", data.Records)
+
 	templates.ExecuteTemplate(w, "layout.html", data)
 }
 

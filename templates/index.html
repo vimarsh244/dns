@@ -3,15 +3,19 @@
 <table border="1">
 <tr><th>name</th><th>type</th><th>value</th><th>ttl</th><th>action</th></tr>
 {{range $name, $recs := .Records}}
+  <!-- DEBUG: Processing record for name: {{$name}} -->
   {{range $recs}}
+    <!-- DEBUG: Processing sub-record for name: {{$name}} -->
     <tr>
       <td>{{$name}}</td>
-      <td>{{if eq .type_ 1}}A{{else if eq .type_ 2}}NS{{else if eq .type_ 5}}CNAME{{else}}?{{end}}</td>
+      <td>{{if eq .Type_ 1}}A{{else if eq .Type_ 2}}NS{{else if eq .Type_ 5}}CNAME{{else}}?{{end}}</td>
       <td>{{rrValue .}}</td>
-      <td>{{.ttl}}</td>
+      <td>{{.TTL}}</td>
       <td>
         <form method="post" style="display:inline">
           <input type="hidden" name="del" value="{{$name}}">
+          <input type="hidden" name="delType" value="{{if eq .Type_ 1}}A{{else if eq .Type_ 2}}NS{{else if eq .Type_ 5}}CNAME{{end}}">
+          <input type="hidden" name="delValue" value="{{rrValue .}}">
           <button type="submit">delete</button>
         </form>
       </td>
