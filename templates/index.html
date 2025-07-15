@@ -1,0 +1,34 @@
+{{define "content"}}
+<h1>dns records</h1>
+<table border="1">
+<tr><th>name</th><th>type</th><th>value</th><th>ttl</th><th>action</th></tr>
+{{range $name, $recs := .Records}}
+  {{range $recs}}
+    <tr>
+      <td>{{$name}}</td>
+      <td>{{if eq .type_ 1}}A{{else if eq .type_ 2}}NS{{else if eq .type_ 5}}CNAME{{else}}?{{end}}</td>
+      <td>{{rrValue .}}</td>
+      <td>{{.ttl}}</td>
+      <td>
+        <form method="post" style="display:inline">
+          <input type="hidden" name="del" value="{{$name}}">
+          <button type="submit">delete</button>
+        </form>
+      </td>
+    </tr>
+  {{end}}
+{{end}}
+</table>
+<h2>add record</h2>
+<form method="post">
+  <input name="name" placeholder="name (eg: domain.com.)">
+  <select name="type">
+    <option value="A">A</option>
+    <option value="NS">NS</option>
+    <option value="CNAME">CNAME</option>
+  </select>
+  <input name="value" placeholder="value (ip or domain)">
+  <input name="ttl" placeholder="ttl" type="number" value="3600">
+  <button type="submit">add</button>
+</form>
+{{end}}

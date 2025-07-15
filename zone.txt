@@ -1,0 +1,6 @@
+# zone file
+domain.com. A 192.0.2.123 3600
+# format: name type value ttl
+
+vimarsh.cc A 1.1.1.1 60
+www.vimarsh.cc CNAME vimarsh.cc 3600
