@@ -16,6 +16,8 @@ const (
 	type_soa   = 6
 	type_cname = 5
 	type_mx    = 15
+	type_aaaa  = 28
+	type_txt   = 16
 	class_in   = 1
 )
 

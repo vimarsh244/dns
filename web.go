@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/bcrypt" // literally only needef ro pass
 )
 
 var templates *template.Template
@@ -24,11 +24,21 @@ func init() {
 				if len(r.Rdata) == 4 {
 					return net.IP(r.Rdata).String()
 				}
+			case type_aaaa:
+				if len(r.Rdata) == 16 {
+					return net.IP(r.Rdata).String()
+				}
 			case type_ns, type_cname:
 				return decode_name(r.Rdata)
+			case type_txt:
+				if len(r.Rdata) > 1 {
+					// Display quoted TXT value for correct deletion
+					return quoteTXT(string(r.Rdata[1:]))
+				}
 			}
 			return "?"
 		},
+		"unquoteTXT": unquoteTXT,
 	}
 	// Ensure layout.html is the base and index.html is available as a named template
 	templates = template.Must(template.New("layout.html").Funcs(funcMap).ParseFiles(
@@ -65,7 +75,6 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 			name += "."
 		}
 
-		// Get existing records for the name
 		records := zone[name]
 		var updatedRecords []rr
 
@@ -73,18 +82,20 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 		switch strings.ToUpper(delTypeStr) {
 		case "A":
 			delType = type_a
+		case "AAAA":
+			delType = type_aaaa
 		case "NS":
 			delType = type_ns
 		case "CNAME":
 			delType = type_cname
+		case "TXT":
+			delType = type_txt
 		default:
 			log.Printf("Warning: Unknown record type \"%s\" for deletion of %s", delTypeStr, name)
-			// keeping all existing records if type is unknown, essentially skipping deletion.
 			updatedRecords = records
 		}
 
 		var delRdata []byte
-		// convering delValueStr to []byte based on delType for comparison
 		switch delType {
 		case type_a:
 			ip := net.ParseIP(delValueStr).To4()
@@ -92,7 +103,15 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 				delRdata = ip
 			} else {
 				log.Printf("Warning: Invalid IP address \"%s\" for A record deletion of %s", delValueStr, name)
-				updatedRecords = records // Cannot parse value, skip deletion
+				updatedRecords = records
+			}
+		case type_aaaa:
+			ip := net.ParseIP(delValueStr).To16()
+			if ip != nil && ip.To4() == nil {
+				delRdata = ip
+			} else {
+				log.Printf("Warning: Invalid IPv6 address \"%s\" for AAAA record deletion of %s", delValueStr, name)
+				updatedRecords = records
 			}
 		case type_ns, type_cname:
 			if !strings.HasSuffix(delValueStr, ".") {
@@ -108,24 +127,26 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 			}
 			buf.WriteByte(0)
 			delRdata = []byte(buf.String())
+		case type_txt:
+			txtVal := unquoteTXT(delValueStr)
+			if len(txtVal) > 255 {
+				log.Printf("Warning: TXT value too long for deletion of %s", name)
+				updatedRecords = records
+			} else {
+				delRdata = append([]byte{byte(len(txtVal))}, []byte(txtVal)...)
+			}
 		}
-
-		// iterating through existing records and keep only those that don't match the one to be deleted
 		for _, r := range records {
-			// Compare Name, Type_, and Rdata to find the specific record to delete
 			if !(r.Name == name && r.Type_ == delType && bytes.Equal(r.Rdata, delRdata)) {
 				updatedRecords = append(updatedRecords, r)
 			}
 		}
-
 		if len(updatedRecords) == 0 {
 			delete(zone, name)
 		} else {
 			zone[name] = updatedRecords
 		}
-
 		save_zone("zone.txt")
-		// No redirect, continue to render the page
 	}
 	if r.Method == "POST" {
 		name := r.FormValue("name")
@@ -148,6 +169,13 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 				rrec.Type_ = type_a
 				ip := net.ParseIP(value).To4()
 				if ip != nil {
+					rrec.Rdata = ip
+					zone[name] = append(zone[name], rrec)
+				}
+			case "AAAA":
+				rrec.Type_ = type_aaaa
+				ip := net.ParseIP(value).To16()
+				if ip != nil && ip.To4() == nil {
 					rrec.Rdata = ip
 					zone[name] = append(zone[name], rrec)
 				}
@@ -177,6 +205,13 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 				buf.WriteByte(0)
 				rrec.Rdata = []byte(buf.String())
 				zone[name] = append(zone[name], rrec)
+			case "TXT":
+				rrec.Type_ = type_txt
+				txtVal := unquoteTXT(value)
+				if len(txtVal) <= 255 {
+					rrec.Rdata = append([]byte{byte(len(txtVal))}, []byte(txtVal)...)
+					zone[name] = append(zone[name], rrec)
+				}
 			}
 			save_zone("zone.txt")
 		}

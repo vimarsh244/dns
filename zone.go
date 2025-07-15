@@ -14,6 +14,50 @@ import (
 var zone = make(map[string][]rr)
 
 // load zone file
+// parseZoneLine splits a zone file line into fields, handling quoted strings for TXT records
+func parseZoneLine(line string) []string {
+	var fields []string
+	var buf strings.Builder
+	inQuotes := false
+	escaped := false
+	for i, r := range line {
+		switch {
+		case escaped:
+			buf.WriteRune(r)
+			escaped = false
+		case r == '\\':
+			escaped = true
+		case r == '"':
+			inQuotes = !inQuotes
+		case r == ' ' || r == '\t':
+			if inQuotes {
+				buf.WriteRune(r)
+			} else if buf.Len() > 0 {
+				fields = append(fields, buf.String())
+				buf.Reset()
+			}
+		default:
+			buf.WriteRune(r)
+		}
+		// If last character, flush
+		if i == len(line)-1 && buf.Len() > 0 {
+			fields = append(fields, buf.String())
+		}
+	}
+	return fields
+}
+
+func unquoteTXT(s string) string {
+	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+		s = s[1 : len(s)-1]
+	}
+	return strings.ReplaceAll(s, "\\\"", "\"")
+}
+
+func quoteTXT(s string) string {
+	return "\"" + strings.ReplaceAll(s, "\"", "\\\"") + "\""
+}
+
 func load_zone(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -26,7 +70,7 @@ func load_zone(path string) error {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		parts := strings.Fields(line)
+		parts := parseZoneLine(line)
 		if len(parts) < 4 {
 			continue
 		}
@@ -49,9 +93,15 @@ func load_zone(path string) error {
 				continue
 			}
 			r.Rdata = ip
+		case "AAAA":
+			r.Type_ = type_aaaa
+			ip := net.ParseIP(value).To16()
+			if ip == nil || ip.To4() != nil {
+				continue
+			}
+			r.Rdata = ip
 		case "NS":
 			r.Type_ = type_ns
-			// ns Rdata is domain name
 			buf := &strings.Builder{}
 			for _, label := range strings.Split(value, ".") {
 				buf.WriteByte(byte(len(label)))
@@ -68,9 +118,15 @@ func load_zone(path string) error {
 			}
 			buf.WriteByte(0)
 			r.Rdata = []byte(buf.String())
+		case "TXT":
+			r.Type_ = type_txt
+			txtVal := unquoteTXT(value)
+			if len(txtVal) > 255 {
+				continue
+			}
+			r.Rdata = append([]byte{byte(len(txtVal))}, []byte(txtVal)...)
 		}
 		zone[name] = append(zone[name], r)
-		// Debug: log the loaded record
 		log.Printf("Loaded record: name=%s type=%d class=%d ttl=%d rdata=%v", r.Name, r.Type_, r.Class, r.TTL, r.Rdata)
 	}
 	return scanner.Err()
@@ -90,12 +146,20 @@ func save_zone(path string) error {
 			case type_a:
 				typ = "A"
 				val = net.IP(r.Rdata).String()
+			case type_aaaa:
+				typ = "AAAA"
+				val = net.IP(r.Rdata).String()
 			case type_ns:
 				typ = "NS"
 				val = decode_name(r.Rdata)
 			case type_cname:
 				typ = "CNAME"
 				val = decode_name(r.Rdata)
+			case type_txt:
+				typ = "TXT"
+				if len(r.Rdata) > 1 {
+					val = quoteTXT(string(r.Rdata[1:]))
+				}
 			}
 			if typ != "" {
 				f.WriteString(name + " " + typ + " " + val + " " + strconv.Itoa(int(r.TTL)) + "\n")
