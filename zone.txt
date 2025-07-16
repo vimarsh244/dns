@@ -1,5 +1,0 @@
-domain.com. A 192.0.2.123 3600
-vimarsh.cc. A 1.1.1.1 60
-vimarsh.cc. TXT "1234 abc" 123
-ipv6.vimarsh.cc. AAAA 2001:db8::1 1800
-*.x.ext.vimarsh.cc. A 152.67.9.138 1

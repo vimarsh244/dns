@@ -50,6 +50,9 @@ analytics.log
 - no caching or anything 
 - currently wildcard support for domain is implemented in such a hacky way - patched upon patch to check *. and if it wildcard then subdomain should return with subdomain - like this isnt a good way but, only i am using it so like fine?
 
+- analytics is implemented in a very simple way, just logging events to a file, and then reading them back to display on the web ui, Everytime a request is made, it logs the event with type "request", and if an error occurs, it logs "error" or "notfound" as appropriate. and then on webui when someone opens page it reads compiles into summary and then displays it on the web ui
+- probably will fail when analytics file gets a couple megs
+
 
 ## supported record types
 - A
