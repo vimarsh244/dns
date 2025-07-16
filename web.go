@@ -56,13 +56,17 @@ func start_web() {
 	// load password hash
 	hash, err := os.ReadFile(passfile)
 	if err != nil {
-		log.Fatal("could not read admin.pass: ", err)
+		log.Println("could not read admin.pass: ", err)
+		password_hash = nil
+	} else {
+		password_hash = hash
 	}
-	password_hash = hash
-
 	http.HandleFunc("/", basic_auth(handle_index))
 	log.Println("web ui on :8080")
-	http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Println("web server error: ", err)
+	}
 }
 
 func handle_index(w http.ResponseWriter, r *http.Request) {

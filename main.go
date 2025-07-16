@@ -12,7 +12,7 @@ func main() {
 	// load zone file
 	err := load_zone("zone.txt")
 	if err != nil {
-		log.Fatal("could not load zone: ", err)
+		log.Println("could not load zone: ", err)
 	}
 
 	// start dns server (udp 53)
@@ -35,10 +35,41 @@ func start_dns() {
 	for {
 		n, client, err := conn.ReadFromUDP(buf)
 		if err != nil {
+			log.Println("error reading UDP: ", err)
 			continue
 		}
-		go handle_query(conn, client, buf[:n])
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Println("Recovered from panic in handle_query:", r)
+				}
+			}()
+			handle_query(conn, client, buf[:n])
+		}()
 	}
+}
+
+// findZoneRecords returns records for exact or wildcard matches
+func findZoneRecords(name string) []rr {
+	if recs, ok := zone[name]; ok && len(recs) > 0 {
+		return recs
+	}
+	// Try wildcard matches
+	labels := strings.Split(name, ".")
+	// Remove trailing empty label from split (from trailing dot)
+	if len(labels) > 0 && labels[len(labels)-1] == "" {
+		labels = labels[:len(labels)-1]
+	}
+	for i := 0; i < len(labels)-1; i++ {
+		wildcardLabels := make([]string, len(labels))
+		copy(wildcardLabels, labels)
+		wildcardLabels[i] = "*"
+		wildcardName := strings.Join(wildcardLabels, ".") + "."
+		if recs, ok := zone[wildcardName]; ok && len(recs) > 0 {
+			return recs
+		}
+	}
+	return nil
 }
 
 func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
@@ -46,7 +77,6 @@ func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
 	if err != nil {
 		return
 	}
-	// Allow other query types to pass through for zone lookup
 	if q.Class != class_in {
 		return
 	}
@@ -54,8 +84,19 @@ func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
 	if !strings.HasSuffix(name, ".") {
 		name += "."
 	}
-	answers := zone[name]
-	resp, err := build_response(hdr, q, answers, nil)
+	answers := findZoneRecords(name)
+	// if the answer is from a wildcard, set the owner name to the query name
+	var fixedAnswers []rr
+	for _, r := range answers {
+		if r.Name != name {
+			r2 := r
+			r2.Name = name
+			fixedAnswers = append(fixedAnswers, r2)
+		} else {
+			fixedAnswers = append(fixedAnswers, r)
+		}
+	}
+	resp, err := build_response(hdr, q, fixedAnswers, nil)
 	if err != nil {
 		return
 	}

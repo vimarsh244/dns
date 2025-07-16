@@ -32,8 +32,14 @@ login with user `admin` and password
 - web ui mnaking very simple one for add/remove records
 - goal is no external libraries 
 
+- no caching or anything 
+- currently wildcard support for domain is implemented in such a hacky way - patched upon patch to check *. and if it wildcard then subdomain should return with subdomain - like this isnt a good way but, only i am using it so like fine?
+
+
 ## supported record types
 - A
 - NS
 - CNAME
-TODOs: txt, mx, aaaa (ipv6 ),  (these should be enuf)
+- TXT
+- AAAA
+TODOs:  mx,  (these should be enuf)
