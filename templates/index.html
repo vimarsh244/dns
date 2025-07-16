@@ -41,4 +41,11 @@
   <input name="ttl" placeholder="ttl" type="number" value="3600">
   <button type="submit">add</button>
 </form>
+<h2>Analytics</h2>
+<table border="1">
+  <tr><th>Period</th><th>Requests</th><th>Errors</th><th>Not Found</th></tr>
+  <tr><td>Last 24h</td><td>{{index (index .Analytics "24h") "request"}}</td><td>{{index (index .Analytics "24h") "error"}}</td><td>{{index (index .Analytics "24h") "notfound"}}</td></tr>
+  <tr><td>Last 7d</td><td>{{index (index .Analytics "7d") "request"}}</td><td>{{index (index .Analytics "7d") "error"}}</td><td>{{index (index .Analytics "7d") "notfound"}}</td></tr>
+  <tr><td>Last 30d</td><td>{{index (index .Analytics "30d") "request"}}</td><td>{{index (index .Analytics "30d") "error"}}</td><td>{{index (index .Analytics "30d") "notfound"}}</td></tr>
+</table>
 {{end}}

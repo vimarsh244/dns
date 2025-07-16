@@ -73,32 +73,39 @@ func findZoneRecords(name string) []rr {
 }
 
 func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
-	hdr, q, err := parse_dns_msg(data)
-	if err != nil {
-		return
-	}
-	if q.Class != class_in {
-		return
-	}
-	name := q.Name
-	if !strings.HasSuffix(name, ".") {
-		name += "."
-	}
-	answers := findZoneRecords(name)
-	// if the answer is from a wildcard, set the owner name to the query name
-	var fixedAnswers []rr
-	for _, r := range answers {
-		if r.Name != name {
-			r2 := r
-			r2.Name = name
-			fixedAnswers = append(fixedAnswers, r2)
-		} else {
-			fixedAnswers = append(fixedAnswers, r)
-		}
-	}
-	resp, err := build_response(hdr, q, fixedAnswers, nil)
-	if err != nil {
-		return
-	}
-	conn.WriteToUDP(resp, client)
+   logAnalyticsEvent("request")
+   hdr, q, err := parse_dns_msg(data)
+   if err != nil {
+	   logAnalyticsEvent("error")
+	   return
+   }
+   if q.Class != class_in {
+	   logAnalyticsEvent("error")
+	   return
+   }
+   name := q.Name
+   if !strings.HasSuffix(name, ".") {
+	   name += "."
+   }
+   answers := findZoneRecords(name)
+   if len(answers) == 0 {
+	   logAnalyticsEvent("notfound")
+   }
+   // if the answer is from a wildcard, set the owner name to the query name
+   var fixedAnswers []rr
+   for _, r := range answers {
+	   if r.Name != name {
+		   r2 := r
+		   r2.Name = name
+		   fixedAnswers = append(fixedAnswers, r2)
+	   } else {
+		   fixedAnswers = append(fixedAnswers, r)
+	   }
+   }
+   resp, err := build_response(hdr, q, fixedAnswers, nil)
+   if err != nil {
+	   logAnalyticsEvent("error")
+	   return
+   }
+   conn.WriteToUDP(resp, client)
 }

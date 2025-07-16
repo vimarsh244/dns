@@ -27,6 +27,21 @@ http://localhost:8080/
 
 login with user `admin` and password 
 
+4. Files it creates
+
+zone.txt
+```
+# zone TYPE data TTL
+domain.com. A 192.0.2.123 3600
+```
+
+analytics.log
+
+```
+{"type":"request","timestamp":"2025-07-16T14:30:17.430353211Z"}
+```
+
+
 ## notes
 - records are stored in zone.txt
 - web ui mnaking very simple one for add/remove records
