@@ -62,3 +62,37 @@ func getAnalyticsStats() (map[string]map[string]int, error) {
 	}
 	return stats, nil
 }
+
+func updateAnalyticsSummary() error {
+	stats, _ := getAnalyticsStats()
+	f, err := os.OpenFile("analytics_summary.json", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	b, _ := json.Marshal(stats)
+	f.Write(b)
+	return nil
+}
+
+func readAnalyticsSummary() (map[string]map[string]int, error) {
+	f, err := os.Open("analytics_summary.json")
+	if err != nil {
+		return map[string]map[string]int{
+			"24h": {"request": 0, "error": 0, "notfound": 0},
+			"7d":  {"request": 0, "error": 0, "notfound": 0},
+			"30d": {"request": 0, "error": 0, "notfound": 0},
+		}, nil
+	}
+	defer f.Close()
+	var stats map[string]map[string]int
+	err = json.NewDecoder(f).Decode(&stats)
+	if err != nil {
+		return map[string]map[string]int{
+			"24h": {"request": 0, "error": 0, "notfound": 0},
+			"7d":  {"request": 0, "error": 0, "notfound": 0},
+			"30d": {"request": 0, "error": 0, "notfound": 0},
+		}, nil
+	}
+	return stats, nil
+}

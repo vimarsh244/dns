@@ -1,5 +1,7 @@
 .vscode/*
 
 
+# analytics and dns files 
 zone.txt
 analytics.log
+analytics_summary.json

@@ -220,7 +220,9 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 			save_zone("zone.txt")
 		}
 	}
-	stats, _ := getAnalyticsStats()
+	// Update analytics summary before rendering
+	updateAnalyticsSummary()
+	stats, _ := readAnalyticsSummary()
 	data := struct {
 		Records   map[string][]rr
 		Analytics map[string]map[string]int
