@@ -220,17 +220,17 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 			save_zone("zone.txt")
 		}
 	}
-   stats, _ := getAnalyticsStats()
-   data := struct {
-	   Records map[string][]rr
-	   Analytics map[string]map[string]int
-   }{zone, stats}
+	stats, _ := getAnalyticsStats()
+	data := struct {
+		Records   map[string][]rr
+		Analytics map[string]map[string]int
+	}{zone, stats}
 
-   // Debug: Log the records and analytics being passed to the template
-   log.Printf("DEBUG: Web UI Records: %+v\n", data.Records)
-   log.Printf("DEBUG: Analytics: %+v\n", data.Analytics)
+	// Debug: Log the records and analytics being passed to the template
+	log.Printf("DEBUG: Web UI Records: %+v\n", data.Records)
+	log.Printf("DEBUG: Analytics: %+v\n", data.Analytics)
 
-   templates.ExecuteTemplate(w, "layout.html", data)
+	templates.ExecuteTemplate(w, "layout.html", data)
 }
 
 // basic auth middleware

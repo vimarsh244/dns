@@ -1,14 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"sync"
 	"time"
-	"encoding/json"
 )
 
 var analyticsFile = "analytics.log" // used in logAnalyticsEvent and getAnalyticsStats
-var analyticsMu sync.Mutex // used for file locking
+var analyticsMu sync.Mutex          // used for file locking
 
 // EventType: "request", "error", "notfound"
 type AnalyticsEvent struct {
@@ -16,7 +16,6 @@ type AnalyticsEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// Log an analytics event
 func logAnalyticsEvent(eventType string) {
 	analyticsMu.Lock()
 	defer analyticsMu.Unlock()
@@ -30,7 +29,7 @@ func logAnalyticsEvent(eventType string) {
 	f.Write(append(b, '\n'))
 }
 
-// Aggregate stats for the past 24h, 7d, 30d
+// stats for the past 24h, 7d, 30d
 func getAnalyticsStats() (map[string]map[string]int, error) {
 	analyticsMu.Lock()
 	defer analyticsMu.Unlock()
