@@ -28,6 +28,19 @@ type rr struct {
 	Class uint16
 	TTL   uint32
 	Rdata []byte // for a: 4 bytes, for others: whatever
+	// For SOA only (optional, for convenience)
+	SOA *soaRdata // nil unless Type_ == type_soa
+}
+
+// SOA RDATA struct (for convenience)
+type soaRdata struct {
+	MName   string // primary NS
+	RName   string // responsible party (mailbox, with . for @)
+	Serial  uint32
+	Refresh uint32
+	Retry   uint32
+	Expire  uint32
+	Minimum uint32
 }
 
 // dns header struct

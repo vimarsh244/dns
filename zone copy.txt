@@ -1,0 +1,2 @@
+vimarsh.cc. SOA ns1.vimarsh.cc. admin.vimarsh.cc. 2025071701 3600 600 86400 3600 0
+vimarsh.cc A 1.1.1.5 120

@@ -69,6 +69,18 @@ func write_rr(w *bytes.Buffer, rr rr) {
 	binary.Write(w, binary.BigEndian, rr.Type_)
 	binary.Write(w, binary.BigEndian, rr.Class)
 	binary.Write(w, binary.BigEndian, rr.TTL)
+	// For SOA, ensure Rdata is up to date from SOA struct if present
+	if rr.Type_ == type_soa && rr.SOA != nil {
+		buf := &bytes.Buffer{}
+		write_name(buf, rr.SOA.MName)
+		write_name(buf, rr.SOA.RName)
+		binary.Write(buf, binary.BigEndian, rr.SOA.Serial)
+		binary.Write(buf, binary.BigEndian, rr.SOA.Refresh)
+		binary.Write(buf, binary.BigEndian, rr.SOA.Retry)
+		binary.Write(buf, binary.BigEndian, rr.SOA.Expire)
+		binary.Write(buf, binary.BigEndian, rr.SOA.Minimum)
+		rr.Rdata = buf.Bytes()
+	}
 	binary.Write(w, binary.BigEndian, uint16(len(rr.Rdata)))
 	w.Write(rr.Rdata)
 }

@@ -8,7 +8,18 @@ import (
 	"strings"
 )
 
+var port int16 = 8053
+
 func main() {
+	// Example: configure allowed secondaries and TSIG keys (edit as needed)
+	setupAXFR(
+		[]string{"127.0.0.1"}, // allowed secondary IPs
+		[]tsigKey{{
+			Name:      "axfr-key.",
+			Secret:    "dGVzdGtleQ==", // base64 for 'testkey'
+			Algorithm: TSIG_HMAC_SHA256,
+		}},
+	)
 	// load zone file
 	err := load_zone("zone.txt")
 	if err != nil {
@@ -16,14 +27,17 @@ func main() {
 	}
 
 	// start dns server (udp 53)
-	go start_dns()
+	go start_dns(port)
+
+	// start tcp dns server (AXFR/TSIG)
+	go start_tcp_dns(port)
 
 	// start web ui (8080)
 	start_web()
 }
 
-func start_dns() {
-	addr := net.UDPAddr{Port: 8053, IP: net.IPv4zero}
+func start_dns(port int16) {
+	addr := net.UDPAddr{Port: int(port), IP: net.IPv4zero}
 	conn, err := net.ListenUDP("udp", &addr)
 	if err != nil {
 		log.Println("could not bind udp : ", addr.Port, err)

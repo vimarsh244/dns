@@ -126,6 +126,58 @@ func load_zone(path string) error {
 			}
 			r.Rdata = append([]byte{byte(len(txtVal))}, []byte(txtVal)...)
 		}
+		// SOA support
+		if typeStr == "SOA" && len(parts) >= 10 {
+			r.Type_ = type_soa
+			// SOA: <name> SOA <mname> <rname> <serial> <refresh> <retry> <expire> <minimum> <ttl>
+			mname := parts[2]
+			rname := parts[3]
+			serial, _ := strconv.ParseUint(parts[4], 10, 32)
+			refresh, _ := strconv.ParseUint(parts[5], 10, 32)
+			retry, _ := strconv.ParseUint(parts[6], 10, 32)
+			expire, _ := strconv.ParseUint(parts[7], 10, 32)
+			minimum, _ := strconv.ParseUint(parts[8], 10, 32)
+			r.TTL = uint32(ttl)
+			// Encode SOA RDATA to wire format
+			buf := &strings.Builder{}
+			for _, label := range strings.Split(mname, ".") {
+				if label != "" {
+					buf.WriteByte(byte(len(label)))
+					buf.WriteString(label)
+				}
+			}
+			buf.WriteByte(0)
+			for _, label := range strings.Split(rname, ".") {
+				if label != "" {
+					buf.WriteByte(byte(len(label)))
+					buf.WriteString(label)
+				}
+			}
+			buf.WriteByte(0)
+			// 5x 32-bit fields
+			rdata := make([]byte, 20)
+			put32 := func(i int, v uint32) {
+				rdata[i] = byte(v >> 24)
+				rdata[i+1] = byte(v >> 16)
+				rdata[i+2] = byte(v >> 8)
+				rdata[i+3] = byte(v)
+			}
+			put32(0, uint32(serial))
+			put32(4, uint32(refresh))
+			put32(8, uint32(retry))
+			put32(12, uint32(expire))
+			put32(16, uint32(minimum))
+			r.Rdata = append([]byte(buf.String()), rdata...)
+			r.SOA = &soaRdata{
+				MName:   mname,
+				RName:   rname,
+				Serial:  uint32(serial),
+				Refresh: uint32(refresh),
+				Retry:   uint32(retry),
+				Expire:  uint32(expire),
+				Minimum: uint32(minimum),
+			}
+		}
 		zone[name] = append(zone[name], r)
 		log.Printf("Loaded record: name=%s type=%d class=%d ttl=%d rdata=%v", r.Name, r.Type_, r.Class, r.TTL, r.Rdata)
 	}
@@ -161,6 +213,14 @@ func save_zone(path string) error {
 					val = quoteTXT(string(r.Rdata[1:]))
 				}
 			}
+			if r.Type_ == type_soa && r.SOA != nil {
+				typ = "SOA"
+				val = r.SOA.MName + " " + r.SOA.RName + " " + strconv.FormatUint(uint64(r.SOA.Serial), 10) + " " +
+					strconv.FormatUint(uint64(r.SOA.Refresh), 10) + " " +
+					strconv.FormatUint(uint64(r.SOA.Retry), 10) + " " +
+					strconv.FormatUint(uint64(r.SOA.Expire), 10) + " " +
+					strconv.FormatUint(uint64(r.SOA.Minimum), 10)
+			}
 			if typ != "" {
 				f.WriteString(name + " " + typ + " " + val + " " + strconv.Itoa(int(r.TTL)) + "\n")
 			}
@@ -168,6 +228,8 @@ func save_zone(path string) error {
 	}
 	return nil
 }
+
+// Helper to decode SOA RDATA from wire format
 
 // decode dns name from rdata
 func decode_name(data []byte) string {
@@ -183,4 +245,41 @@ func decode_name(data []byte) string {
 		i += sz
 	}
 	return strings.Join(labels, ".")
+}
+
+// Helper to decode SOA RDATA from wire format
+func decode_soa_rdata(data []byte) *soaRdata {
+	// mname, rname (domain names), then 5x uint32
+	i := 0
+	readName := func() (string, int) {
+		var labels []string
+		for i < len(data) {
+			sz := int(data[i])
+			if sz == 0 {
+				i++
+				break
+			}
+			i++
+			labels = append(labels, string(data[i:i+sz]))
+			i += sz
+		}
+		return strings.Join(labels, "."), i
+	}
+	mname, _ := readName()
+	rname, _ := readName()
+	if i+20 > len(data) {
+		return nil
+	}
+	get32 := func(off int) uint32 {
+		return uint32(data[i+off])<<24 | uint32(data[i+off+1])<<16 | uint32(data[i+off+2])<<8 | uint32(data[i+off+3])
+	}
+	return &soaRdata{
+		MName:   mname,
+		RName:   rname,
+		Serial:  get32(0),
+		Refresh: get32(4),
+		Retry:   get32(8),
+		Expire:  get32(12),
+		Minimum: get32(16),
+	}
 }
