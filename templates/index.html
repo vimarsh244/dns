@@ -1,46 +1,88 @@
 {{define "content"}}
 <h1>dns records</h1>
+
+{{range $type, $records := .Records}}
+<h2>{{$type}} records</h2>
 <table border="1">
-<tr><th>name</th><th>type</th><th>value</th><th>ttl</th><th>action</th></tr>
-{{range $name, $recs := .Records}}
-  <!-- DEBUG: Processing record for name: {{$name}} -->
-  {{range $recs}}
-    <!-- DEBUG: Processing sub-record for name: {{$name}} -->
-    <tr>
-      <td>{{$name}}</td>
-      <td>{{if eq .Type_ 1}}A{{else if eq .Type_ 2}}NS{{else if eq .Type_ 5}}CNAME{{else if eq .Type_ 28}}AAAA{{else if eq .Type_ 16}}TXT{{else}}?{{end}}</td>
-      <td>{{rrValue .}}</td>
-      <td>{{.TTL}}</td>
-      <td>
-        <form method="post" style="display:inline">
-          <input type="hidden" name="del" value="{{$name}}">
-          <input type="hidden" name="delType" value="{{if eq .Type_ 1}}A{{else if eq .Type_ 2}}NS{{else if eq .Type_ 5}}CNAME{{else if eq .Type_ 28}}AAAA{{else if eq .Type_ 16}}TXT{{end}}">
-          {{if eq .Type_ 16}}
-            <input type="hidden" name="delValue" value="{{rrValue .}}">
-          {{else}}
-            <input type="hidden" name="delValue" value="{{rrValue .}}">
-          {{end}}
-          <button type="submit">delete</button>
-        </form>
-      </td>
-    </tr>
-  {{end}}
-{{end}}
+    <thead>
+        <tr>
+            <th>name</th>
+            {{if eq $type "SOA"}}
+                <th>mname</th>
+                <th>rname</th>
+                <th>serial</th>
+                <th>refresh</th>
+                <th>retry</th>
+                <th>expire</th>
+                <th>minimum</th>
+            {{else if eq $type "MX"}}
+                <th>preference</th>
+                <th>exchange</th>
+            {{else}}
+                <th>value</th>
+            {{end}}
+            <th>ttl</th>
+            <th>action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range $name, $recs := $records}}
+            {{range $recs}}
+                <tr>
+                    <td>{{$name}}</td>
+                    {{if eq .Type_ 6}}
+                        <td>{{.SOA.MName}}</td>
+                        <td>{{.SOA.RName}}</td>
+                        <td>{{.SOA.Serial}}</td>
+                        <td>{{.SOA.Refresh}}</td>
+                        <td>{{.SOA.Retry}}</td>
+                        <td>{{.SOA.Expire}}</td>
+                        <td>{{.SOA.Minimum}}</td>
+                    {{else if eq .Type_ 15}}
+                        <td>{{index (split (rrValue .) " ") 0}}</td>
+                        <td>{{index (split (rrValue .) " ") 1}}</td>
+                    {{else}}
+                        <td>{{rrValue .}}</td>
+                    {{end}}
+                    <td>{{.TTL}}</td>
+                    <td>
+                        <form method="post" style="display:inline">
+                            <input type="hidden" name="del" value="{{$name}}">
+                            <input type="hidden" name="delType" value="{{$type}}">
+                            <input type="hidden" name="delValue" value="{{rrValue .}}">
+                            <button type="submit">delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {{end}}
+        {{end}}
+    </tbody>
 </table>
-<h2>add record</h2>
+
+<h3>add {{$type}} record</h3>
 <form method="post">
-  <input name="name" placeholder="name (eg: domain.com.)">
-  <select name="type">
-    <option value="A">A</option>
-    <option value="AAAA">AAAA</option>
-    <option value="NS">NS</option>
-    <option value="CNAME">CNAME</option>
-    <option value="TXT">TXT</option>
-  </select>
-  <input name="value" placeholder="value (ip, domain, or text)">
-  <input name="ttl" placeholder="ttl" type="number" value="3600">
-  <button type="submit">add</button>
+    <input type="hidden" name="type" value="{{$type}}">
+    <input name="name" placeholder="name (eg: domain.com.)">
+    {{if eq $type "SOA"}}
+        <input name="mname" placeholder="mname">
+        <input name="rname" placeholder="rname">
+        <input name="serial" placeholder="serial" type="number">
+        <input name="refresh" placeholder="refresh" type="number">
+        <input name="retry" placeholder="retry" type="number">
+        <input name="expire" placeholder="expire" type="number">
+        <input name="minimum" placeholder="minimum" type="number">
+    {{else if eq $type "MX"}}
+        <input name="preference" placeholder="preference" type="number">
+        <input name="exchange" placeholder="exchange">
+    {{else}}
+        <input name="value" placeholder="value (ip, domain, or text)">
+    {{end}}
+    <input name="ttl" placeholder="ttl" type="number" value="3600">
+    <button type="submit">add</button>
 </form>
+<hr>
+{{end}}
+
 <h2>analytics</h2>
 <table border="1">
   <tr><th>Period</th><th>Requests</th><th>Errors</th><th>Not Found</th></tr>

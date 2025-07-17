@@ -333,9 +333,7 @@ func handleAXFR(conn net.Conn, remoteIP string) {
 	log.Printf("AXFR served to %s", remoteIP)
 }
 
-// Helper to get all keys from a map[string][]rr
-
-// Helper to get all keys from a map[string][]rr
+// helper to get all keys from a map[string][]rr
 func keys(m map[string][]rr) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
@@ -344,9 +342,7 @@ func keys(m map[string][]rr) []string {
 	return out
 }
 
-// Collect all RRs for the zone
-
-// Helper to get current unix time (seconds)
+// helper to get current unix time (seconds)
 func timeNow() int64 {
 	return time.Now().Unix()
 }

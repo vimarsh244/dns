@@ -1,4 +1,6 @@
 .vscode/*
+*.log
+.env
 
 
 # analytics and dns files 

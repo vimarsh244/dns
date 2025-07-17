@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"bytes"
+	"encoding/binary"
 )
 
 // in-memory zone map
@@ -47,18 +49,8 @@ func parseZoneLine(line string) []string {
 	return fields
 }
 
-func unquoteTXT(s string) string {
-	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
-		s = s[1 : len(s)-1]
-	}
-	return strings.ReplaceAll(s, "\\\"", "\"")
-}
-
-func quoteTXT(s string) string {
-	return "\"" + strings.ReplaceAll(s, "\"", "\\\"") + "\""
-}
-
 func load_zone(path string) error {
+
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -125,6 +117,27 @@ func load_zone(path string) error {
 				continue
 			}
 			r.Rdata = append([]byte{byte(len(txtVal))}, []byte(txtVal)...)
+		case "MX":
+			r.Type_ = type_mx
+			parts := strings.Fields(value)
+			if len(parts) != 2 {
+				continue
+			}
+			preference, err := strconv.Atoi(parts[0])
+			if err != nil {
+				continue
+			}
+			exchange := parts[1]
+			if !strings.HasSuffix(exchange, ".") {
+				exchange += "."
+			}
+			r.Preference = uint16(preference)
+			r.Exchange = exchange
+			// Also store Rdata for wire format if needed elsewhere, though not strictly for template
+			buf := &bytes.Buffer{}
+			binary.Write(buf, binary.BigEndian, uint16(preference))
+			write_name(buf, exchange)
+			r.Rdata = buf.Bytes()
 		}
 		// SOA support
 		if typeStr == "SOA" && len(parts) >= 10 {
@@ -212,6 +225,13 @@ func save_zone(path string) error {
 				if len(r.Rdata) > 1 {
 					val = quoteTXT(string(r.Rdata[1:]))
 				}
+			case type_mx:
+				typ = "MX"
+				if len(r.Rdata) > 2 {
+					preference := int(r.Rdata[0])<<8 | int(r.Rdata[1])
+					exchange := decode_name(r.Rdata[2:])
+					val = strconv.Itoa(preference) + " " + exchange
+				}
 			}
 			if r.Type_ == type_soa && r.SOA != nil {
 				typ = "SOA"
@@ -244,42 +264,50 @@ func decode_name(data []byte) string {
 		labels = append(labels, string(data[i:i+sz]))
 		i += sz
 	}
-	return strings.Join(labels, ".")
+	name := strings.Join(labels, ".")
+	if name != "" {
+		name += "."
+	}
+	return name
 }
 
 // Helper to decode SOA RDATA from wire format
 func decode_soa_rdata(data []byte) *soaRdata {
 	// mname, rname (domain names), then 5x uint32
-	i := 0
-	readName := func() (string, int) {
-		var labels []string
-		for i < len(data) {
-			sz := int(data[i])
-			if sz == 0 {
-				i++
-				break
-			}
-			i++
-			labels = append(labels, string(data[i:i+sz]))
-			i += sz
-		}
-		return strings.Join(labels, "."), i
-	}
-	mname, _ := readName()
-	rname, _ := readName()
-	if i+20 > len(data) {
+	mname, mnameLen := decode_name_from_rdata(data)
+	rname, rnameLen := decode_name_from_rdata(data[mnameLen:])
+	i := mnameLen + rnameLen
+
+	if len(data) < i+20 {
 		return nil
-	}
-	get32 := func(off int) uint32 {
-		return uint32(data[i+off])<<24 | uint32(data[i+off+1])<<16 | uint32(data[i+off+2])<<8 | uint32(data[i+off+3])
 	}
 	return &soaRdata{
 		MName:   mname,
 		RName:   rname,
-		Serial:  get32(0),
-		Refresh: get32(4),
-		Retry:   get32(8),
-		Expire:  get32(12),
-		Minimum: get32(16),
+		Serial:  binary.BigEndian.Uint32(data[i : i+4]),
+		Refresh: binary.BigEndian.Uint32(data[i+4 : i+8]),
+		Retry:   binary.BigEndian.Uint32(data[i+8 : i+12]),
+		Expire:  binary.BigEndian.Uint32(data[i+12 : i+16]),
+		Minimum: binary.BigEndian.Uint32(data[i+16 : i+20]),
 	}
+}
+
+func decode_name_from_rdata(data []byte) (string, int) {
+	var labels []string
+	i := 0
+	for i < len(data) {
+		sz := int(data[i])
+		if sz == 0 {
+			i++
+			break
+		}
+		i++
+		labels = append(labels, string(data[i:i+sz]))
+		i += sz
+	}
+	name := strings.Join(labels, ".")
+	if name != "" {
+		name += "."
+	}
+	return name, i
 }

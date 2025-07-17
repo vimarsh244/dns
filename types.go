@@ -30,6 +30,9 @@ type rr struct {
 	Rdata []byte // for a: 4 bytes, for others: whatever
 	// For SOA only (optional, for convenience)
 	SOA *soaRdata // nil unless Type_ == type_soa
+	// For MX only (optional, for convenience)
+	Preference uint16
+	Exchange   string
 }
 
 // SOA RDATA struct (for convenience)
