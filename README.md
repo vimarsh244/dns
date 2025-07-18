@@ -38,7 +38,7 @@ domain.com. A 192.0.2.123 3600
 analytics.log
 
 ```
-{"type":"request","timestamp":"2025-07-16T14:30:17.430353211Z"}
+{"type":"request","name":"www.vimarsh.cc CNAME IN","timestamp":"2025-07-18T07:48:26.359834317Z"}
 ```
 
 
@@ -53,6 +53,8 @@ analytics.log
 - analytics is implemented in a very simple way, just logging events to a file, and then reading them back to display on the web ui, Everytime a request is made, it logs the event with type "request", and if an error occurs, it logs "error" or "notfound" as appropriate. and then on webui when someone opens page it reads compiles into summary and then displays it on the web ui
 - probably will fail when analytics file gets a couple megs
 
+- axfr implementation is kind of there, but verification with hmac rfc and keys is not working - essentially this will proeprly send the zone file and updating of SOA record as well. But verification before sending with tsig keys is not wokrking yet
+
 
 ## supported record types
 - A
@@ -61,4 +63,7 @@ analytics.log
 - TXT
 - AAAA
 - MX
-TODOs:   (these should be enuf)
+TODOs:  PTR and SRV record (mostly wont do) (these should be enuf)
+
+https://www.cloudflare.com/learning/dns/dns-records/ 
+cloudflare has listed a lot of records but i dont think we need those - txt records are enough for most verification nowadays
