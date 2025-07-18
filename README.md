@@ -60,4 +60,5 @@ analytics.log
 - CNAME
 - TXT
 - AAAA
-TODOs:  mx,  (these should be enuf)
+- MX
+TODOs:   (these should be enuf)

@@ -230,7 +230,7 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 		type_ := r.FormValue("type")
 		value := r.FormValue("value")
 		ttl, _ := strconv.Atoi(r.FormValue("ttl"))
-		if name != "" && type_ != "" && value != "" && ttl > 0 {
+		if name != "" && type_ != "" && ttl > 0 {
 			if !strings.HasSuffix(name, ".") {
 				name += "."
 			}
@@ -351,6 +351,12 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 
 	// Categorize records by type for the template
 	categorizedRecords := make(map[string]map[string][]rr)
+	// Ensure all desired record types are present in the map for the UI
+	recordTypes := []string{"A", "AAAA", "NS", "CNAME", "TXT", "MX", "SOA"}
+	for _, t := range recordTypes {
+		categorizedRecords[t] = make(map[string][]rr)
+	}
+
 	for name, records := range zone {
 		for _, record := range records {
 			var typeStr string

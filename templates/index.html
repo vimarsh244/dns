@@ -18,6 +18,10 @@
             {{else if eq $type "MX"}}
                 <th>preference</th>
                 <th>exchange</th>
+            {{else if eq $type "AAAA"}}
+                <th>address</th>
+            {{else if eq $type "NS"}}
+                <th>nameserver</th>
             {{else}}
                 <th>value</th>
             {{end}}
@@ -41,6 +45,10 @@
                     {{else if eq .Type_ 15}}
                         <td>{{index (split (rrValue .) " ") 0}}</td>
                         <td>{{index (split (rrValue .) " ") 1}}</td>
+                    {{else if eq .Type_ 28}}
+                        <td>{{rrValue .}}</td>
+                    {{else if eq .Type_ 2}}
+                        <td>{{rrValue .}}</td>
                     {{else}}
                         <td>{{rrValue .}}</td>
                     {{end}}
@@ -74,6 +82,10 @@
     {{else if eq $type "MX"}}
         <input name="preference" placeholder="preference" type="number">
         <input name="exchange" placeholder="exchange">
+    {{else if eq $type "AAAA"}}
+        <input name="value" placeholder="value (ipv6 address)">
+    {{else if eq $type "NS"}}
+        <input name="value" placeholder="value (nameserver)">
     {{else}}
         <input name="value" placeholder="value (ip, domain, or text)">
     {{end}}
