@@ -3,13 +3,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/binary"
 	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
-	"bytes"
-	"encoding/binary"
 )
 
 // in-memory zone map
@@ -95,7 +95,13 @@ func load_zone(path string) error {
 		case "NS":
 			r.Type_ = type_ns
 			buf := &strings.Builder{}
-			for _, label := range strings.Split(value, ".") {
+			labels := strings.Split(value, ".")
+			for _, label := range labels {
+				if label == "" {
+					continue // skip empty labels (from trailing dot)
+					//> NS RDATA: A <domain-name> which specifies a host which should be authoritative for the specified class and domain.
+					// The domain name must be encoded as a sequence of labels ending with a single zero byte.
+				}
 				buf.WriteByte(byte(len(label)))
 				buf.WriteString(label)
 			}
@@ -104,7 +110,11 @@ func load_zone(path string) error {
 		case "CNAME":
 			r.Type_ = type_cname
 			buf := &strings.Builder{}
-			for _, label := range strings.Split(value, ".") {
+			labels := strings.Split(value, ".")
+			for _, label := range labels {
+				if label == "" {
+					continue // skip empty labels (from trailing dot)
+				}
 				buf.WriteByte(byte(len(label)))
 				buf.WriteString(label)
 			}
@@ -153,18 +163,22 @@ func load_zone(path string) error {
 			r.TTL = uint32(ttl)
 			// Encode SOA RDATA to wire format
 			buf := &strings.Builder{}
-			for _, label := range strings.Split(mname, ".") {
-				if label != "" {
-					buf.WriteByte(byte(len(label)))
-					buf.WriteString(label)
+			labels := strings.Split(mname, ".")
+			for _, label := range labels {
+				if label == "" {
+					continue // skip empty labels (from trailing dot)
 				}
+				buf.WriteByte(byte(len(label)))
+				buf.WriteString(label)
 			}
 			buf.WriteByte(0)
-			for _, label := range strings.Split(rname, ".") {
-				if label != "" {
-					buf.WriteByte(byte(len(label)))
-					buf.WriteString(label)
+			labels = strings.Split(rname, ".")
+			for _, label := range labels {
+				if label == "" {
+					continue // skip empty labels (from trailing dot)
 				}
+				buf.WriteByte(byte(len(label)))
+				buf.WriteString(label)
 			}
 			buf.WriteByte(0)
 			// 5x 32-bit fields
