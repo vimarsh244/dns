@@ -152,9 +152,23 @@ func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
 	if len(answers) == 0 {
 		logAnalyticsEvent("notfound", data_str)
 	}
+
+	// it returned all the records, but we oonly want the ones for specific type
+	// filter answers by query type, unless type is ANY (255)
+	var filteredAnswers []rr
+	if q.Type_ == 255 { // ANY
+		filteredAnswers = answers
+	} else {
+		for _, r := range answers {
+			if r.Type_ == q.Type_ {
+				filteredAnswers = append(filteredAnswers, r)
+			}
+		}
+	}
+
 	// if the answer is from a wildcard, set the owner name to the query name
 	var fixedAnswers []rr
-	for _, r := range answers {
+	for _, r := range filteredAnswers {
 		if r.Name != name {
 			r2 := r
 			r2.Name = name

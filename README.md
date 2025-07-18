@@ -55,6 +55,7 @@ analytics.log
 
 - axfr implementation is kind of there, but verification with hmac rfc and keys is not working - essentially this will proeprly send the zone file and updating of SOA record as well. But verification before sending with tsig keys is not wokrking yet
 
+- limitation: max support for packet size over udp ius 512 bytes, so super super long records (esp with TXT records) it wont work and will be truncated.. TCP isnt properly implemented yet..
 
 ## supported record types
 - A

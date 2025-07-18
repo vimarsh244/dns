@@ -15,6 +15,8 @@ import (
 	"golang.org/x/crypto/bcrypt" // literally only needef ro pass
 )
 
+var portweb int16 = 3000
+
 var templates *template.Template
 
 func init() {
@@ -79,8 +81,8 @@ func start_web() {
 		password_hash = hash
 	}
 	http.HandleFunc("/", basic_auth(handle_index))
-	log.Println("web ui on :8080")
-	err = http.ListenAndServe(":8080", nil)
+	log.Println("web ui on :{portweb}", portweb)
+	err = http.ListenAndServe(":"+strconv.Itoa(int(portweb)), nil)
 	if err != nil {
 		log.Println("web server error: ", err)
 	}
