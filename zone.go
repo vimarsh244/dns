@@ -66,9 +66,9 @@ func load_zone(path string) error {
 		if len(parts) < 4 {
 			continue
 		}
-		name := parts[0]
+		name := strings.ToLower(parts[0])
 		if !strings.HasSuffix(name, ".") {
-			name += "."
+			name += "." //fqdn
 		}
 		typeStr := strings.ToUpper(parts[1])
 		value := parts[2]

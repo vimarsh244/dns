@@ -90,7 +90,7 @@ func start_web() {
 
 func handle_index(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" && r.FormValue("del") != "" {
-		name := r.FormValue("del")
+		name := strings.ToLower(r.FormValue("del"))
 		delTypeStr := r.FormValue("delType")
 		delValueStr := r.FormValue("delValue")
 
@@ -228,7 +228,7 @@ func handle_index(w http.ResponseWriter, r *http.Request) {
 		save_zone("zone.txt")
 	}
 	if r.Method == "POST" {
-		name := r.FormValue("name")
+		name := strings.ToLower(r.FormValue("name"))
 		type_ := r.FormValue("type")
 		value := r.FormValue("value")
 		ttl, _ := strconv.Atoi(r.FormValue("ttl"))

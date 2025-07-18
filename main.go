@@ -144,7 +144,7 @@ func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
 		logAnalyticsEvent("error", data_str)
 		return
 	}
-	name := q.Name
+	name := strings.ToLower(q.Name)
 	if !strings.HasSuffix(name, ".") {
 		name += "."
 	}
