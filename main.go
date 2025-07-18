@@ -86,15 +86,62 @@ func findZoneRecords(name string) []rr {
 	return nil
 }
 
+// typeToString mapping DNS type codes to their string names
+func typeToString(t uint16) string {
+	switch t {
+	case 1:
+		return "A"
+	case 2:
+		return "NS"
+	case 5:
+		return "CNAME"
+	case 6:
+		return "SOA"
+	case 12:
+		return "PTR"
+	case 15:
+		return "MX"
+	case 16:
+		return "TXT"
+	case 28:
+		return "AAAA"
+	case 33:
+		return "SRV"
+	case 255:
+		return "ANY"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+// classToString mapping DNS class codes to their string names
+func classToString(c uint16) string {
+	switch c {
+	case 1:
+		return "IN"
+	case 2:
+		return "CS"
+	case 3:
+		return "CH"
+	case 4:
+		return "HS"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
-	logAnalyticsEvent("request")
 	hdr, q, err := parse_dns_msg(data)
+	data_str := q.Name + " " + typeToString(q.Type_) + " " + classToString(q.Class)
 	if err != nil {
-		logAnalyticsEvent("error")
+		logAnalyticsEvent("error", data_str)
 		return
 	}
+
+	logAnalyticsEvent("request", data_str)
+
 	if q.Class != class_in {
-		logAnalyticsEvent("error")
+		logAnalyticsEvent("error", data_str)
 		return
 	}
 	name := q.Name
@@ -103,7 +150,7 @@ func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
 	}
 	answers := findZoneRecords(name)
 	if len(answers) == 0 {
-		logAnalyticsEvent("notfound")
+		logAnalyticsEvent("notfound", data_str)
 	}
 	// if the answer is from a wildcard, set the owner name to the query name
 	var fixedAnswers []rr
@@ -118,7 +165,7 @@ func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
 	}
 	resp, err := build_response(hdr, q, fixedAnswers, nil)
 	if err != nil {
-		logAnalyticsEvent("error")
+		logAnalyticsEvent("error", data_str)
 		return
 	}
 	conn.WriteToUDP(resp, client)

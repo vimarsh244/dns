@@ -13,13 +13,14 @@ var analyticsMu sync.Mutex          // used for file locking
 // EventType: "request", "error", "notfound"
 type AnalyticsEvent struct {
 	Type      string    `json:"type"`
+	Name      string    `json:"name,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func logAnalyticsEvent(eventType string) {
+func logAnalyticsEvent(eventType string, name string) {
 	analyticsMu.Lock()
 	defer analyticsMu.Unlock()
-	event := AnalyticsEvent{Type: eventType, Timestamp: time.Now().UTC()}
+	event := AnalyticsEvent{Type: eventType, Name: name, Timestamp: time.Now().UTC()}
 	f, err := os.OpenFile(analyticsFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return // fail silently
