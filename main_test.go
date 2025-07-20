@@ -14,26 +14,26 @@ func TestFindZoneRecords(t *testing.T) {
 	// Setup a test zone
 	zone = map[string][]rr{
 		"example.com.": {
-			{Name: "example.com.", Type_: type_a, Rdata: net.ParseIP("1.2.3.4").To4()},
-			{Name: "example.com.", Type_: type_mx, Rdata: []byte{0, 10, 3, 'm', 'a', 'i', 'l', 0}},
+			{Name: "example.com.", Type_: type_a, Rdata: net.ParseIP("1.2.3.4").To4(), TTL: 123},
+			{Name: "example.com.", Type_: type_mx, Rdata: []byte{0, 10, 3, 'm', 'a', 'i', 'l', 0}, TTL: 234},
 		},
 		"*.wild.example.com.": {
-			{Name: "*.wild.example.com.", Type_: type_a, Rdata: net.ParseIP("5.6.7.8").To4()},
+			{Name: "*.wild.example.com.", Type_: type_a, Rdata: net.ParseIP("5.6.7.8").To4(), TTL: 345},
 		},
 		"cname.example.com.": {
-			{Name: "cname.example.com.", Type_: type_cname, Rdata: []byte{7, 'e', 'x', 'a', 'm', 'p', 'l', 'e', 3, 'c', 'o', 'm', 0}},
+			{Name: "cname.example.com.", Type_: type_cname, Rdata: []byte{7, 'e', 'x', 'a', 'm', 'p', 'l', 'e', 3, 'c', 'o', 'm', 0}, TTL: 456},
 		},
 		"ipv6.example.com.": {
-			{Name: "ipv6.example.com.", Type_: type_aaaa, Rdata: net.ParseIP("2001:db8::1").To16()},
+			{Name: "ipv6.example.com.", Type_: type_aaaa, Rdata: net.ParseIP("2001:db8::1").To16(), TTL: 567},
 		},
 		"txt.example.com.": {
-			{Name: "txt.example.com.", Type_: type_txt, Rdata: []byte{11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}},
+			{Name: "txt.example.com.", Type_: type_txt, Rdata: []byte{11, 'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}, TTL: 678},
 		},
 		"mx.example.com.": {
-			{Name: "mx.example.com.", Type_: type_mx, Rdata: []byte{0, 10, 4, 'm', 'a', 'i', 'l', 0}},
+			{Name: "mx.example.com.", Type_: type_mx, Rdata: []byte{0, 10, 4, 'm', 'a', 'i', 'l', 0}, TTL: 789},
 		},
 		"soa.example.com.": {
-			{Name: "soa.example.com.", Type_: type_soa, Rdata: soaToRdata(&soaRdata{MName: "ns1.example.com.", RName: "hostmaster.example.com.", Serial: 2023010101, Refresh: 3600, Retry: 1800, Expire: 604800, Minimum: 600})},
+			{Name: "soa.example.com.", Type_: type_soa, Rdata: soaToRdata(&soaRdata{MName: "ns1.example.com.", RName: "hostmaster.example.com.", Serial: 2023010101, Refresh: 3600, Retry: 1800, Expire: 604800, Minimum: 600}), TTL: 890},
 		},
 	}
 
@@ -42,54 +42,63 @@ func TestFindZoneRecords(t *testing.T) {
 		query        string
 		expectedType uint16
 		expectedVal  string
+		expectedTTL  uint32
 	}{
 		{
 			name:         "A Record",
 			query:        "example.com.",
 			expectedType: type_a,
 			expectedVal:  "1.2.3.4",
+			expectedTTL:  123,
 		},
 		{
 			name:         "Wildcard A Record",
 			query:        "test.wild.example.com.",
 			expectedType: type_a,
 			expectedVal:  "5.6.7.8",
+			expectedTTL:  345,
 		},
 		{
 			name:         "CNAME Record",
 			query:        "cname.example.com.",
 			expectedType: type_cname,
 			expectedVal:  "example.com",
+			expectedTTL:  456,
 		},
 		{
 			name:         "AAAA Record",
 			query:        "ipv6.example.com.",
 			expectedType: type_aaaa,
 			expectedVal:  "2001:db8::1",
+			expectedTTL:  567,
 		},
 		{
 			name:         "TXT Record",
 			query:        "txt.example.com.",
 			expectedType: type_txt,
 			expectedVal:  "hello world",
+			expectedTTL:  678,
 		},
 		{
 			name:         "MX Record",
 			query:        "mx.example.com.",
 			expectedType: type_mx,
 			expectedVal:  "10 mail",
+			expectedTTL:  789,
 		},
 		{
 			name:         "SOA Record",
 			query:        "soa.example.com.",
 			expectedType: type_soa,
 			expectedVal:  "ns1.example.com. hostmaster.example.com. 2023010101 3600 1800 604800 600",
+			expectedTTL:  890,
 		},
 		{
 			name:         "No Record",
 			query:        "nonexistent.example.com.",
 			expectedType: 0,
 			expectedVal:  "",
+			expectedTTL:  0,
 		},
 	}
 
@@ -140,11 +149,14 @@ func TestFindZoneRecords(t *testing.T) {
 					if !strings.Contains(val, tc.expectedVal) {
 						t.Errorf("Expected value %s for %s, but got %s", tc.expectedVal, tc.query, val)
 					}
+					if ans.TTL != tc.expectedTTL {
+						t.Errorf("Expected TTL %d for %s, but got %d", tc.expectedTTL, tc.query, ans.TTL)
+					}
 				}
 			}
 
 			if !found {
-				t.Errorf("Expected to find record of type %d for %s, but did not", tc.expectedType, tc.query)
+					t.Errorf("Expected to find record of type %d for %s, but did not", tc.expectedType, tc.query)
 			}
 		})
 	}
