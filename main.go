@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+// import dnsfilter.go for filterAnswers
+
 var port int16 = 8053
 
 func main() {
@@ -153,18 +155,8 @@ func handle_query(conn *net.UDPConn, client *net.UDPAddr, data []byte) {
 		logAnalyticsEvent("notfound", data_str)
 	}
 
-	// it returned all the records, but we oonly want the ones for specific type
-	// filter answers by query type, unless type is ANY (255)
-	var filteredAnswers []rr
-	if q.Type_ == 255 { // ANY
-		filteredAnswers = answers
-	} else {
-		for _, r := range answers {
-			if r.Type_ == q.Type_ {
-				filteredAnswers = append(filteredAnswers, r)
-			}
-		}
-	}
+	// Refactored: use filterAnswers from dnsfilter.go
+	filteredAnswers := filterAnswers(q.Type_, answers)
 
 	// if the answer is from a wildcard, set the owner name to the query name
 	var fixedAnswers []rr

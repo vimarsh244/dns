@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -156,7 +155,7 @@ func TestFindZoneRecords(t *testing.T) {
 			}
 
 			if !found {
-					t.Errorf("Expected to find record of type %d for %s, but did not", tc.expectedType, tc.query)
+				t.Errorf("Expected to find record of type %d for %s, but did not", tc.expectedType, tc.query)
 			}
 		})
 	}
